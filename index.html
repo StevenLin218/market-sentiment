@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>市場情緒投票 - 貪婪與恐懼指數</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .gauge-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            margin: 0 auto 40px;
+        }
+
+        .gauge {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(to right, 
+                #dc2626 0%, 
+                #ea580c 25%, 
+                #fbbf24 50%, 
+                #84cc16 75%, 
+                #22c55e 100%);
+            border-radius: 100px 100px 0 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .gauge-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .needle {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            width: 4px;
+            height: 150px;
+            background: #333;
+            transform-origin: bottom center;
+            transform: translateX(-50%) rotate(0deg);
+            transition: transform 1s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            z-index: 2;
+        }
+
+        .needle::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-bottom: 15px solid #333;
+        }
+
+        .needle::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 20px;
+            height: 20px;
+            background: #333;
+            border-radius: 50%;
+            border: 3px solid white;
+        }
+
+        .score-display {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .score-number {
+            font-size: 48px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .score-label {
+            font-size: 18px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .voting-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+
+        .voting-title {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .vote-buttons {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .vote-btn {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: white;
+        }
+
+        .vote-btn.fear {
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+        }
+
+        .vote-btn.fear:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(220, 38, 38, 0.4);
+        }
+
+        .vote-btn.greed {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+        }
+
+        .vote-btn.greed:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(34, 197, 94, 0.4);
+        }
+
+        .vote-btn:active {
+            transform: translateY(0);
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #e5e7eb;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .thank-you {
+            background: #10b981;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            margin-top: 15px;
+            display: none;
+            animation: slideIn 0.5s;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .reset-btn {
+            width: 100%;
+            padding: 12px;
+            background: #6b7280;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: all 0.3s;
+        }
+
+        .reset-btn:hover {
+            background: #4b5563;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 市場情緒指數</h1>
+        <p class="subtitle">Greed & Fear Index</p>
+
+        <div class="gauge-container">
+            <div class="gauge">
+                <div class="needle" id="needle"></div>
+            </div>
+            <div class="gauge-labels">
+                <span>極度恐懼</span>
+                <span>恐懼</span>
+                <span>中性</span>
+                <span>貪婪</span>
+                <span>極度貪婪</span>
+            </div>
+        </div>
+
+        <div class="score-display">
+            <div class="score-number" id="scoreNumber">50</div>
+            <div class="score-label" id="scoreLabel">中性市場</div>
+        </div>
+
+        <div class="voting-section">
+            <div class="voting-title">你認為現在市場是？</div>
+            <div class="vote-buttons">
+                <button class="vote-btn fear" onclick="vote('fear')">
+                    😱 恐懼
+                </button>
+                <button class="vote-btn greed" onclick="vote('greed')">
+                    🤑 貪婪
+                </button>
+            </div>
+
+            <div class="thank-you" id="thankYou">
+                ✓ 感謝你的投票！
+            </div>
+
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="stat-number" id="fearCount">0</div>
+                    <div class="stat-label">恐懼票數</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="totalCount">0</div>
+                    <div class="stat-label">總投票數</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="greedCount">0</div>
+                    <div class="stat-label">貪婪票數</div>
+                </div>
+            </div>
+
+            <button class="reset-btn" onclick="resetVotes()">重置投票</button>
+        </div>
+    </div>
+
+    <script>
+        // 使用 localStorage 來儲存投票數據
+        let votes = {
+            fear: parseInt(localStorage.getItem('fearVotes')) || 0,
+            greed: parseInt(localStorage.getItem('greedVotes')) || 0
+        };
+
+        function vote(type) {
+            votes[type]++;
+            localStorage.setItem(type + 'Votes', votes[type]);
+            updateDisplay();
+            showThankYou();
+        }
+
+        function updateDisplay() {
+            const total = votes.fear + votes.greed;
+            const greedPercentage = total === 0 ? 50 : (votes.greed / total) * 100;
+            
+            // 更新指數 (0-100, 0是極度恐懼, 100是極度貪婪)
+            const score = Math.round(greedPercentage);
+            
+            // 更新數字顯示
+            document.getElementById('scoreNumber').textContent = score;
+            
+            // 更新標籤
+            let label = '';
+            if (score < 20) label = '極度恐懼';
+            else if (score < 40) label = '恐懼';
+            else if (score < 60) label = '中性市場';
+            else if (score < 80) label = '貪婪';
+            else label = '極度貪婪';
+            document.getElementById('scoreLabel').textContent = label;
+            
+            // 更新指針 (-90度是極度恐懼, 90度是極度貪婪)
+            const needleRotation = (score - 50) * 1.8; // 將0-100映射到-90到90度
+            document.getElementById('needle').style.transform = 
+                `translateX(-50%) rotate(${needleRotation}deg)`;
+            
+            // 更新統計數字
+            document.getElementById('fearCount').textContent = votes.fear;
+            document.getElementById('greedCount').textContent = votes.greed;
+            document.getElementById('totalCount').textContent = total;
+        }
+
+        function showThankYou() {
+            const thankYou = document.getElementById('thankYou');
+            thankYou.style.display = 'block';
+            setTimeout(() => {
+                thankYou.style.display = 'none';
+            }, 2000);
+        }
+
+        function resetVotes() {
+            if (confirm('確定要重置所有投票嗎？')) {
+                votes.fear = 0;
+                votes.greed = 0;
+                localStorage.setItem('fearVotes', 0);
+                localStorage.setItem('greedVotes', 0);
+                updateDisplay();
+            }
+        }
+
+        // 初始化顯示
+        updateDisplay();
+    </script>
+</body>
+</html>
